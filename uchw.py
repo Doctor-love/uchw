@@ -50,17 +50,18 @@ def parse_arguments():
     parser.add_argument(
         '-C', '--check-plugin',
         help='Check plugin command to be executed with shell',
+        metavar='/path/to/plugin -a "1" -b "2"',
         type=str, required=True)
 
     parser.add_argument(
         '-p', '--pattern', dest='map_patterns',
         help='Regular expression pattern for state mapping',
-        metavar=('pattern', 'map_state'), action='append',
-        type=str, nargs=2)
+        metavar=('regex', '{ok,warning,unknown,critical,passthrough}'),
+        action='append', type=str, nargs=2)
 
     parser.add_argument(
         '-P', '--prefix',
-        help='Append prefix to plugin output',
+        help='Append prefix/branding to plugin output',
         action='store_true', default=False)
 
     parser.add_argument(
@@ -77,7 +78,7 @@ def parse_arguments():
     parser.add_argument(
         '-t', '--timeout',
         help='Timeout limit in seconds for check plugin execution',
-        type=int, default=50)
+        metavar='50', type=int, default=50)
 
     state_map = parser.add_argument_group('State mapping')
     states=['ok', 'warning', 'critical', 'unknown']
@@ -196,10 +197,9 @@ def main():
             'uchw: Execution timed out after %i seconds' % args.timeout)
 
     output = command['output']
-
-    # Re-maps plugin return code/state
     original_exit_code = command['exit_code']
 
+    # Re-maps plugin return code/state
     state, reason = remap_exit_code(
         exit_code=original_exit_code,
         ok=args.map_ok, warning=args.map_warning,
@@ -212,9 +212,8 @@ def main():
     else:
         map_patterns = []
 
-    for pattern in map_patterns:
-        re_pattern = pattern[0]
-        map_state = pattern[1]
+    for map_pattern in map_patterns:
+        re_pattern, map_state = map_pattern
 
         if map_state == 'passthrough':
             map_state = original_exit_code
