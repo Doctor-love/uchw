@@ -4,7 +4,7 @@
 
 authors = 'Joel Rangsmo <joel@rangsmo.se>'
 license = 'GPLv2'
-version = 0.2
+version = 0.3
 
 try:
     import argparse
@@ -14,6 +14,7 @@ try:
 
 except ImportError as missing:
     exit_plugin('uchw: Failed to import required modules: "%s"' % missing)
+
 
 def translate(state=None, result=None):
     '''Translates plugin exit codes to states and vice versa'''
@@ -32,11 +33,13 @@ def translate(state=None, result=None):
 
     return False
 
+
 def exit_plugin(output='No plugin output was provided', state='unknown'):
     '''Exits the plugin wrapper in Nagios-style'''
 
     print str(output)
     exit(translate(state=state, result='exit_code'))
+
 
 def parse_arguments():
     '''Parses command line arguments'''
@@ -50,28 +53,28 @@ def parse_arguments():
     parser.add_argument(
         '-C', '--check-plugin',
         help='Check plugin command to be executed with shell',
-        metavar='/path/to/plugin -a "1" -b "2"',
+        metavar='\'/path/to/plugin -a "$ARG1$"\'',
         type=str, required=True)
 
     parser.add_argument(
         '-p', '--pattern', dest='map_patterns',
         help='Regular expression pattern for state mapping',
-        metavar=('regex', '{ok,warning,unknown,critical,passthrough}'),
+        metavar=('\'regex\'', '{ok,warning,unknown,critical,passthrough}'),
         action='append', type=str, nargs=2)
 
     parser.add_argument(
         '-P', '--prefix',
-        help='Append prefix/branding to plugin output',
+        help='Append "uchw:" prefix to plugin output',
         action='store_true', default=False)
 
     parser.add_argument(
         '-S', '--suffix',
-        help='Append suffix to output with reason for wrapping decision',
+        help='Append reason for state mapping decision to output',
         action='store_true', default=False)
 
     parser.add_argument(
         '-s', '--shell',
-        help='Execute check plugin with specified shell',
+        help='Execute check plugin with specified shell (default: /bin/bash)',
         choices=['/bin/sh', '/usr/local/bin/bash', '/bin/bash'],
         default='/bin/bash')
 
@@ -108,7 +111,20 @@ def parse_arguments():
         help='Display plugin wrapper version',
         action='version', version=version)
 
-    return parser.parse_args()
+    args = parser.parse_args()
+
+    # Additional error checking for pattern state
+    if not args.map_patterns:
+        args.map_patterns = []
+
+    for map_pattern in args.map_patterns:
+        state_option = map_pattern[1]
+
+        if state_option != 'passthrough' and not state_option in states:
+            parser.error('"%s" is not a valid state' % str(state_option))
+
+    return args
+
 
 def execute_plugin(command=None, shell=None, timeout=None):
     '''Executes check plugin and returns dict with results'''
@@ -142,6 +158,7 @@ def execute_plugin(command=None, shell=None, timeout=None):
 
     return {'output': output, 'exit_code': exit_code}
 
+
 def remap_exit_code(exit_code=None, ok=0, warning=1, critical=2, unknown=3):
     '''Re-maps the plugin exit code (if needed)'''
 
@@ -173,6 +190,7 @@ def remap_exit_code(exit_code=None, ok=0, warning=1, critical=2, unknown=3):
 
     return new_exit_code, reason
 
+
 def match_pattern(string=None, pattern=None):
     '''Returns True if regular expression pattern matches string'''
 
@@ -181,6 +199,7 @@ def match_pattern(string=None, pattern=None):
 
     else:
         return False
+
 
 def main():
     '''Main application function'''
@@ -206,13 +225,7 @@ def main():
         critical=args.map_critical, unknown=args.map_unknown)
 
     # Checks if any of the supplied matching patterns matches output
-    if args.map_patterns:
-        map_patterns = args.map_patterns
-
-    else:
-        map_patterns = []
-
-    for map_pattern in map_patterns:
+    for map_pattern in args.map_patterns:
         re_pattern, map_state = map_pattern
 
         if map_state == 'passthrough':
@@ -220,7 +233,7 @@ def main():
 
         if match_pattern(string=output, pattern=re_pattern):
             state = map_state
-            reason = 'Pattern "%s" was matched' % re_pattern
+            reason = 'pattern "%s" was matched' % re_pattern
 
             break
 
@@ -233,6 +246,7 @@ def main():
 
     exit_plugin(output=output, state=state)
 
+
 if __name__ == '__main__':
     try:
         main()
@@ -240,6 +254,8 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         exit_plugin('\nuchw: Command execution was interrupted by keyboard')
 
-    except:
-        raise
-        exit_plugin('uchw: Plugin wrapper threw an unhandled exception')
+    except SystemExit as exit_code:
+        exit(int(str(exit_code)))
+
+    except Exception as error_msg:
+        exit_plugin('uchw: Generated unhandled exception: "%s"' % error_msg)

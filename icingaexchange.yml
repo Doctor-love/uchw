@@ -8,6 +8,15 @@ type: Plugin
 license: gplv2
 releases: 
   - 
+    name: 0.3
+    description: "0.3 Release"
+    files: 
+      - 
+        name: uchw
+        url: "file:///uchw.py"
+        description: "Wrapper plugin"
+        checksum: 1b55d2dc119cffa41a2c8f5141bd8caf
+  - 
     name: 0.2
     description: "0.2 Release"
     files: 

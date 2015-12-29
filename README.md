@@ -13,13 +13,16 @@ Features
 ========
 - Provides timeout support for all executed plugins
 - Search status output for regular expression patterns and change the state if matched
-- Statick state mappings (like Critical -> Warning)
+- Static state mappings (like CRITICAL -> WARNING)
 
 
 Installation and dependencies
 =============================
 _uchw_ depends on nothing outside the Python 2.7 standard library.  
 If you are running Python 2.6 on RHEL/CentOS 6, you can install the argparse module with pip or yum if you have the EPEL repository installed:
+
+The script requires Python 2.7 or Python 2.6 with the "argparse" module.  
+You can install the dependency with PIP or with YUM if the EPEL repository is available on your system.  
 
 ```
 # pip install argparse
@@ -46,5 +49,5 @@ command_line: /plugins/uchw.py --check-plugin '/plugins/check_temp -H "$HOSTADDR
 If the temperature would go above the configured threshold, _uchw_ would ouput something like this:  
 
 ```
-Temperature is 55 degrees Celsius (Pattern "Temperature is .*" was matched)
+Temperature is 55 degrees Celsius (pattern "Temperature is .*" was matched)
 ```
